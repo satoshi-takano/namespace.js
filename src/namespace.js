@@ -360,7 +360,6 @@ Namespace.prototype.require = function(packages, callback) {
     }
     
     var _this = this;
-    // 依存しているファイルの数.
     this._numToReadPackages = packages.length;
     var info = {
         clientNamespace: this,
@@ -368,14 +367,13 @@ Namespace.prototype.require = function(packages, callback) {
 
         childCompletion: function(child) {
             if (!child._numToReadPackages) {
-                // 依存先で依存しているファイルをすべて読み込み終えたら次を読み込み始める
                 _this._numToReadPackages--;
-                // まだ読み込み終えてないのがあったら読む
+                // loads more modules
                 if (_this.info.packages.length) {
                     var next = _this.info.packages.splice(0, 1)[0];
                     addTag(next);
                 } else {
-                    // すべて読み込み終えたらコールバックを呼びつつ、自分の完了を親の childCompletion を呼び出してしらせる
+                    // when loaded all modules, call the callback and bubbles for the parent
                     if (!_this._imported) {
                         callback.call(_this);
                         _this._imported = true;
@@ -397,13 +395,13 @@ Namespace.prototype.require = function(packages, callback) {
         var ns = new Namespace($package);
         ns.parentInfo = info;
 
-        // すでに読み込み済み or 読込中の場合は捨てる
+        // already loaded or now loading
         if (ns._loading || ns._loaded) {
             _this.info.childCompletion(ns);
             return;
         }
 
-        // script tag 作って読み込み
+        // create new script tag
         ns._loading = true;
         var jsURL = Namespace.jsPath + "/" + ns.nsName.replace(/\./g, "/") + ".js";
         var script = document.createElement("script");
