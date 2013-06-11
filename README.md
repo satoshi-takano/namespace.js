@@ -1,20 +1,15 @@
 namespace.js [![Build Status](https://travis-ci.org/satoshi-takano/namespace.js.png?branch=master)](https://travis-ci.org/satoshi-takano/namespace.js)
 ======================
-JavaScriptオブジェクトのprototype定義をシンプルでかっこよく書くためのライブラリです。
-RubyなどのクラスベースOOP言語に慣れ親しんだプログラマにとって、書きやすく読みやすい記述方法でprototypeを定義できます。
+JavaScriptのprototype定義をシンプルでかっこよく書くためのライブラリです。
+RubyなどのクラスベースOOP言語に慣れ親しんだプログラマにとって、書きやすく読みやすい記述でprototypeを定義できます。
 
 ##Description##
 
-`new Namespace("jp.example")`で得たNamespaceインスタンスに対し、下記で説明するNamespaceのメソッド群を使用して１つまたは複数のprototypeを定義します。  
-namespace.jsでのprototype定義は、すべてNamespaceオブジェクトのメソッドを通して行われます。  
-これによって、継承、メソッドのオーバーライドと親への委譲、クラスベースOOPでいうところのクラスメンバなどがシンプルかつ明示的に実装できます。    
+Namespaceインスタンス`e.g. new Namespace("jp.example")`に対し、下記で説明するNamespaceインスタンスのメソッド群を使用して１つまたは複数のprototypeを定義します。  
+これによって、継承、メソッドのオーバーライドと親への委譲、プロパティのgetterとsetter、クラスベースOOPでいうところのクラスメンバなどがシンプルかつ明示的に記述できます。    
 
-Namespaceの定義された.jsファイルは、非同期かつ再帰的に読み込み可能なので、namespace.jsを利用して定義したprototypeは再利用しやすくなります。
-
-制約としてNamespaceの名前とディレクトリの構成、jsファイル名を対応させる必要があります。
-jp.example.my_prototypesというNamespaceを利用する場合、
-その実装は /jp/example/my_prototypes.js に定義してください。  
-この後で説明するように、この制約のおかげでnamespace.jsは依存するNamespaceをスマートに読み込むことができます。
+またnamespace.jsは強力なファイル間依存解決方法を持っており、namespace.jsを利用して定義したprototypeの再利用性を高めます。
+この機能のサポートを受けるためにファイルレイアウトに制約が設けられますが、それについては後述します。
 
 それでは、namespace.jsを利用した実際のprototype定義方法を下記に例を示していきます。
 
@@ -37,12 +32,13 @@ jp.example.my_prototypesというNamespaceを利用する場合、
 
     		// def メソッドに名前付き関数を渡してメソッドを定義します。
     		def(function inspect() {
-    			return "propA = " + this.propA + "\npropB = " + this.propB;
+    			return "propA = " + this.propA + " propB = " + this.propB;
     		});
     	});
     }
     
-    var sp = new jp.example.Super(); // => #<Super>
+    var sp = new jp.example.Super("foo", "bar"); // => #<Super>
+    sp.inspect() // => "propA = foo propB = bar"
 
 ### Extends a prototype ###
 	// 上で定義した Super を継承した Sub を定義します。
@@ -52,7 +48,7 @@ jp.example.my_prototypesというNamespaceを利用する場合、
 
 		
 		def(function initialize(p0, p1, p2, p3) {
-			// $super メソッドで、Super のコンストラクタを呼び出します。
+			// $super メソッドで、Super#initialize を呼び出します。
 			this.$super(p0, p1);
 
 			this.propC = p2;
@@ -62,8 +58,7 @@ jp.example.my_prototypesというNamespaceを利用する場合、
 		// 親プロトタイプで定義されているメソッドをオーバーライドします。
 		// this.$super() でオーバーライド元のメソッドを実行できます。
 		def(function inspect() {
-			console.log(this);
-			return this.$super() + "\npropC = " + this.propC + "\npropD = " + this.propD;
+			return this.$super() + " propC = " + this.propC + " propD = " + this.propD;
 		});
 
 		// $$ オブジェクトに対しての def は、プロトタイプへのメソッド定義です。
@@ -73,17 +68,22 @@ jp.example.my_prototypesというNamespaceを利用する場合、
 		// 同じく、プロトタイプへの変数定義です。
 		$$.classVarA = "class variable";
 	});
+	Sub.clasMethodA(); // => classMethodA
+	Sub.classVarA; // => class variable
+	var sub = new Sub("foo", "bar", "baz", "qux");
+	sub.inspect(); // => "propA = foo propB = bar propC = baz propD = qux"
 	
 ### Settings accesibility of the attributes ###
 	proto(function MyPrototype() {
-		// 上記３つのアクセス制御メソッドはそれぞれ可変長引数を受け取ります。	
+		// Ruby の attr_reader, attr_writer, attr_accessor ライクなメソッドが使えます。
+		// 以下の３つのアクセス制御メソッドはそれぞれ可変長引数を受け取ります。	
+		
 		// attrReader はインスタンスの _read プロパティに対しての getter メソッドを作ります
 		attrReader("read")
 		// attrReader はインスタンスの _write プロパティに対しての setter メソッドを作ります
 		attrWriter("write")
 		// attrAccessor はインスタンスの _readWrite プロパティに対しての getter, setter メソッドを作ります
 		attrAccessor("readWrite")
-		
 		
 		init(function () {
 			this._read = "This is a read only attribute";
@@ -109,20 +109,20 @@ jp.example.my_prototypesというNamespaceを利用する場合、
 
 ### Defines singleton prototype ###
 	// singleton メソッドは、ランタイムで１つしかインスタンス化しないプロトタイプを定義します。
-	// ただし、 new を使用すればインスタンスを複数作れてしまい、
+	// ただし、当然 new を使用すればインスタンスを複数作れてしまいます。
 	// この prototype のインスタンスが１つしか作られないことを保証するものではありません。
-	// あくまで、singleton パターンを適用している、ということを明示的に示す目的で使用してください。
-	// 将来的に削除する可能性が高いです。
+	// あくまで、singleton パターンを適用している、ということを明示する目的で使用してください。
 	// singleton メソッドを使用して定義した prototype のインスタンスは Singleton.getInstance() でインスタンスを得ます。
 	singleton(function Singleton() {
 		init(function () {
 			alert("Singleton was generated");
 		});
 	});
+	var si = Singleton.getInstance();
 
 `new Namespace(name)`の呼び出しによって同名のNamespaceが複数インスタンス化されることはありません。
-つまり`new Namespace("jp.example") === new Namespace("jp.example")`は常に真になります。  
-さらに`new Namespace("jp.example")`を実行した後は、グローバルオブジェクトに対し`window.jp.example`のようにアクセスでき、`new Namespace("jp.example") === window.jp.example`は常に真になります。  
+つまり`new Namespace("jp.example") === new Namespace("jp.example")`は真になります。  
+さらに`new Namespace("jp.example")`を実行した後は、グローバルオブジェクトに対し`jp.example`のようにアクセスでき、`new Namespace("jp.example") === jp.example`は真になります。  
 
 上の例のコメントに示したように、Namespaceインスタンスに対してのprototype定義用のメソッドは、Namespace#use に渡した関数スコープの中で一時的にグローバルオブジェクトにコピーされるため、メソッド呼び出し時の this を省略でき視覚的にシンプルになります。  
 このトリックは数箇所で使われていて、例えばNamespace#proto に渡した関数スコープ内では、prototypeに対してのメソッド定義用の Namespace#def メソッドが同じように一時的にグローバルオブジェクトにコピーされます。
@@ -171,7 +171,7 @@ namespace.js はモジュール開発をサポートする強力な依存ファ�
 	<script type="text/javascript">
 	
 	// jsファイルのディレクトリパスを指定
-    // Namespace.jsPath = "./js";
+    	// Namespace.jsPath = "./js";
     
 	// /advanced/graphics/canvas.js の読み込みを要求。
 	new Namespace("hoge").require(["advanced.graphics.canvas"], fucntion() {
@@ -186,6 +186,10 @@ namespace.js はモジュール開発をサポートする強力な依存ファ�
 `advanced.graphics.canvas`が依存している`advanced.geometry`も読み込まれています。
 依存先のNamespaceが他のどんなNamespaceに依存していても、利用するときにそれを意識する必要はありません。
 
+制約としてNamespaceの名前とディレクトリの構成、jsファイル名を対応させる必要があります。
+jp.example.my_prototypesというNamespaceを利用する場合、
+その実装は /jp/example/my_prototypes.js に定義してください。  
+この後で説明するように、この制約のおかげでnamespace.jsは依存するNamespaceをスマートに読み込むことができます。
 
 
 Licence
