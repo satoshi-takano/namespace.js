@@ -191,6 +191,9 @@ jp.example.my_prototypesというNamespaceを利用する場合、
 その実装は /jp/example/my_prototypes.js に定義してください。  
 この後で説明するように、この制約のおかげでnamespace.jsは依存するNamespaceをスマートに読み込むことができます。
 
+## Supports
+InternetExplorer 6 ~
+FireFox, Safari, Chrome の新しいめの環境で動作確認済みです。
 
 Licence
 ----------
