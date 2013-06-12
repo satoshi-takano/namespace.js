@@ -288,14 +288,15 @@ Namespace.prototype = new (function() {
         var name = functionPrototype.getMethodName(namedFunc);
 
         if (tmpSelf[name] == undefined) {
-            tmpSelf[name] = eval("(function " + name + " () {\
-                             var internal = arguments[0];\
-                             var callInitialize = internal == undefined ? true : internal.__callInitialize__ ;\
-                             if (callInitialize == undefined) callInitialize = true;\
-                             if (callInitialize && this.initialize) {\
-                             this.initialize.apply(this, arguments);\
-                            }\
-                            })");
+            tmpSelf[name] = eval("(function() {\
+                return function " + name + " () {\
+                    var internal = arguments[0];\
+                    var callInitialize = internal == undefined ? true : internal.__callInitialize__ ;\
+                    if (callInitialize == undefined) callInitialize = true;\
+                    if (callInitialize && this.initialize)\
+                      this.initialize.apply(this, arguments);\
+                }\
+            })()");
         } 
 
         var proto = tmpSelf[name];
