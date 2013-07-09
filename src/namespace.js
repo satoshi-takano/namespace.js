@@ -91,7 +91,9 @@ Namespace.prototype = new (function() {
             return wrapper;
         };
         function $super() {
-            return arguments.callee.caller.superMethod.apply(this, arguments);
+            var args = arguments;
+            if (args.length == 0) args = arguments.callee.caller.arguments;
+            return arguments.callee.caller.superMethod.apply(this, args);
         };
 
         /**
