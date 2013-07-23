@@ -405,7 +405,7 @@ Namespace.prototype.require = function(packages, callback) {
         ns.parentInfo = info;
 
         // already loaded or now loading
-        if (ns._loading || ns._loaded) {
+        if (ns._loading || ns._loaded || ns._imported) {
             _this.info.childCompletion(ns);
             return;
         }
