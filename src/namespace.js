@@ -76,7 +76,7 @@ Namespace.prototype = new (function() {
         function getMethodName(method) {
             var name = method.name;
             if (name == undefined) {
-                name = /function\s*(.*)\s*\(/mgi.exec(method)[1];
+                name = /function\s*([a-z0-9$_]*)\s*\(/mgi.exec(method)[1];
                 if (name == null) return;
             }
             return name;
@@ -290,7 +290,7 @@ Namespace.prototype = new (function() {
         var name = functionPrototype.getMethodName(namedFunc);
 
         if (tmpSelf[name] == undefined) {
-            tmpSelf[name] = eval("(function() {\
+            var f_ = tmpSelf[name] = eval("(function() {\
                 return function " + name + " () {\
                     var internal = arguments[0];\
                     var callInitialize = internal == undefined ? true : internal.__callInitialize__ ;\
@@ -299,6 +299,7 @@ Namespace.prototype = new (function() {
                       this.initialize.apply(this, arguments);\
                 }\
             })()");
+            f_.name = name;
         } 
 
         var proto = tmpSelf[name];
