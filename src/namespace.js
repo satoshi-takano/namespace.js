@@ -421,8 +421,14 @@ Namespace.prototype.require = function(packages, callback) {
             ns._loading = false;
             ns._loaded = true;
             _this.info.childCompletion(ns);
+            this.onload = null;
         }
-        script.onreadystatechange = function(e) {if(e.readyState=="loaded"||e.readyState=="complete") script.onload();}
+        script.onreadystatechange = function() {
+            if (this.readyState == "loaded" || this.readyState == "complete") {
+                this.onload();
+                this.onreadystatechange = null;
+            }
+        }
         document.body.appendChild(script);
     }
 }
