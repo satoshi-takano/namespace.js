@@ -87,14 +87,22 @@ Namespace.prototype = new (function() {
             var wrapper = method;
             // use by $super() method
             wrapper.superMethod = self.substance.prototype[key];
-            wrapper.owner = self.substance;
+            wrapper.$super = _$super();
             return wrapper;
         };
-        function $super() {
-            var args = arguments;
-            if (args.length == 0) args = arguments.callee.caller.arguments;
-            return arguments.callee.caller.superMethod.apply(this, args);
-        };
+        
+        function _$super() {
+            return function(scope) {
+                if (this.__chain__ == undefined) this.__chain__ = 0;
+                this.__chain__++;                
+                var superMethod = this;
+                for (var i = 0, l = this.__chain__; i < l; i++) {
+                    superMethod = superMethod.superMethod;
+                }
+                if (superMethod.__firstInMethodChain__) this.__chain__ = 0;
+                superMethod.call(scope);
+            }
+        }
 
         /**
          * クラスからシングルトンインスタンスを得ます.<br/>
@@ -124,7 +132,6 @@ Namespace.prototype = new (function() {
 
             self.substance.prototype = proto;
             self.substance.prototype.$class = self.substance;
-            self.substance.prototype.$super = $super;
         };
 
         /**
@@ -153,11 +160,30 @@ Namespace.prototype = new (function() {
         this.getter = function (name, func) {
             var p = self.substance.prototype;
 
-            var fullname = "get" + name;
-            self.substance.prototype[fullname] = wrap(fullname, func);
-
+            var specifiedName = "get" + name.substr(0, 1).toUpperCase() + name.substr(1, name.length);
+            p[specifiedName] = wrap(specifiedName, func);
+            
             if ("__defineGetter__" in p) {
                 p.__defineGetter__(name, func);
+            }
+        }
+        
+        /**
+         * Define the setter
+         * If user's environment doesn't supports __defineSetter__ function, this function won't do anything.
+         * @method setter
+         * @memberOf Namespace#
+         * @param {string} name property name.
+         * @param {function} func The function called when client set the property.
+         **/
+        this.setter = function (name, func) {
+            var p = self.substance.prototype;
+
+            var specifiedName = "set" + name.substr(0, 1).toUpperCase() + name.substr(1, name.length);
+            self.substance.prototype[specifiedName] = wrap(specifiedName, func);
+
+            if ("__defineSetter__" in p) {
+                p.__defineSetter__(name, func);
             }
         }
 
@@ -193,25 +219,6 @@ Namespace.prototype = new (function() {
         }
 
         /**
-         * Define the setter
-         * If user's environment doesn't supports __defineSetter__ function, this function won't do anything.
-         * @method setter
-         * @memberOf Namespace#
-         * @param {string} name property name.
-         * @param {function} func The function called when client set the property.
-         **/
-        this.setter = function (name, func) {
-            var p = self.substance.prototype;
-
-            var fullname = "set" + name;
-            self.substance.prototype[fullname] = wrap(fullname, func);
-
-            if ("__defineSetter__" in p) {
-                p.__defineSetter__(name, func);
-            }
-        }
-
-        /**
          * Define the method.
          * @method def
          * @memberOf Namespace#
@@ -219,7 +226,10 @@ Namespace.prototype = new (function() {
          **/
         this.def = function(method){
             var name = getMethodName(method);
-            self.substance.prototype[name] = wrap(name, method);
+            var m = wrap(name, method);
+            self.substance.prototype[name] = m;
+            var match = /^\s*?this\.[a-z0-9.]*?\$super\(/m.exec(method.toString())
+            if (!match) m.__firstInMethodChain__ = true;
         };
         this.defInObj = function(method) {
             var name = getMethodName(method);
